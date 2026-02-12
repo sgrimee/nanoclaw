@@ -481,8 +481,22 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Credentials are injected by the host's credential proxy via ANTHROPIC_BASE_URL.
-  // No real secrets exist in the container environment.
+  // Load group env vars into process.env so Bash subprocesses can see them.
+  // Auth secrets are excluded — credentials are injected via ANTHROPIC_BASE_URL (credential proxy).
+  const groupEnvFile = '/workspace/env-dir/env';
+  if (fs.existsSync(groupEnvFile)) {
+    const envContent = fs.readFileSync(groupEnvFile, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      if (SECRET_ENV_VARS.includes(key)) continue;
+      const value = trimmed.slice(eqIdx + 1).trim();
+      process.env[key] = value;
+    }
+  }
   const sdkEnv: Record<string, string | undefined> = { ...process.env };
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
