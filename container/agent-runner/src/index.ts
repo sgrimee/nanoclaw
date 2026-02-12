@@ -508,7 +508,24 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Build SDK env: merge secrets into process.env for the SDK only.
+  // Load group env vars into process.env so Bash subprocesses can see them.
+  // Auth secrets are excluded — they're passed via stdin and stay in sdkEnv only.
+  const groupEnvFile = '/workspace/env-dir/env';
+  if (fs.existsSync(groupEnvFile)) {
+    const envContent = fs.readFileSync(groupEnvFile, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      if (SECRET_ENV_VARS.includes(key)) continue;
+      const value = trimmed.slice(eqIdx + 1).trim();
+      process.env[key] = value;
+    }
+  }
+
+  // Build SDK env: merge process.env with auth secrets for the SDK.
   // Secrets never touch process.env itself, so Bash subprocesses can't see them.
   const sdkEnv: Record<string, string | undefined> = { ...process.env };
   for (const [key, value] of Object.entries(containerInput.secrets || {})) {

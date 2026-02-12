@@ -162,6 +162,57 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  // Environment file directory (keeps credentials out of process listings)
+  // Each group gets its own env dir to prevent cross-group secret leakage
+  const envDir = path.join(DATA_DIR, 'env', group.folder);
+  fs.mkdirSync(envDir, { recursive: true });
+  const envLines: string[] = [];
+
+  // Global env: only expose specific auth variables needed by Claude Code
+  const globalEnvFile = path.join(projectRoot, '.env');
+  if (fs.existsSync(globalEnvFile)) {
+    const envContent = fs.readFileSync(globalEnvFile, 'utf-8');
+    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'];
+    for (const line of envContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      if (allowedVars.some((v) => trimmed.startsWith(`${v}=`))) {
+        envLines.push(trimmed);
+      }
+    }
+  }
+
+  // Shared env: all vars from groups/global/.env apply to every group (no allowlist)
+  const globalGroupEnvFile = path.join(GROUPS_DIR, 'global', '.env');
+  if (fs.existsSync(globalGroupEnvFile)) {
+    const globalGroupEnvContent = fs.readFileSync(globalGroupEnvFile, 'utf-8');
+    for (const line of globalGroupEnvContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      envLines.push(trimmed);
+    }
+  }
+
+  // Per-group env: append all vars from groups/{folder}/.env (no allowlist, overrides global)
+  const groupEnvFile = path.join(GROUPS_DIR, group.folder, '.env');
+  if (fs.existsSync(groupEnvFile)) {
+    const groupEnvContent = fs.readFileSync(groupEnvFile, 'utf-8');
+    for (const line of groupEnvContent.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      envLines.push(trimmed);
+    }
+  }
+
+  if (envLines.length > 0) {
+    fs.writeFileSync(path.join(envDir, 'env'), envLines.join('\n') + '\n');
+    mounts.push({
+      hostPath: envDir,
+      containerPath: '/workspace/env-dir',
+      readonly: true,
+    });
+  }
+
   // Copy agent-runner source into a per-group writable location so agents
   // can customize it (add tools, change behavior) without affecting other
   // groups. Recompiled on container startup via entrypoint.sh.
