@@ -1,3 +1,5 @@
+import path from 'path';
+import { STORE_DIR } from './config.js';
 import { Channel, NewMessage } from './types.js';
 
 export function escapeXml(s: string): string {
@@ -10,10 +12,28 @@ export function escapeXml(s: string): string {
 }
 
 export function formatMessages(messages: NewMessage[]): string {
-  const lines = messages.map(
-    (m) =>
-      `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">${escapeXml(m.content)}</message>`,
-  );
+  const lines = messages.map((m) => {
+    let messageContent = `<message sender="${escapeXml(m.sender_name)}" time="${m.timestamp}">`;
+
+    if (m.media_path && m.media_mime_type) {
+      // Convert host media path to container path
+      // Host: /path/to/project/store/media/file.jpg -> Container: /workspace/media/file.jpg
+      let containerMediaPath = m.media_path;
+      const mediaDir = path.join(STORE_DIR, 'media');
+      if (m.media_path.startsWith(mediaDir)) {
+        // Extract just the filename
+        const filename = path.basename(m.media_path);
+        containerMediaPath = `/workspace/media/${filename}`;
+      }
+      // Include media as attachment that Claude can read
+      messageContent += `${escapeXml(m.content)}\n[Image: ${containerMediaPath}]`;
+    } else {
+      messageContent += escapeXml(m.content);
+    }
+
+    messageContent += `</message>`;
+    return messageContent;
+  });
   return `<messages>\n${lines.join('\n')}\n</messages>`;
 }
 

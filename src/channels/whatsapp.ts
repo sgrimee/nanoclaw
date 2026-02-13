@@ -9,6 +9,7 @@ import makeWASocket, {
   fetchLatestWaWebVersion,
   makeCacheableSignalKeyStore,
   useMultiFileAuthState,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 
 import {
@@ -202,6 +203,48 @@ export class WhatsAppChannel implements Channel {
             msg.message?.videoMessage?.caption ||
             '';
 
+          let mediaPath: string | undefined;
+          let mediaMimeType: string | undefined;
+
+          // Download image messages
+          if (msg.message?.imageMessage) {
+            try {
+              const buffer = await downloadMediaMessage(
+                msg,
+                'buffer',
+                {},
+                {
+                  logger,
+                  reuploadRequest: this.sock.updateMediaMessage,
+                },
+              ) as Buffer;
+
+              if (buffer && buffer.length > 0) {
+                const mimeType = msg.message.imageMessage.mimetype || 'image/jpeg';
+                const extension = mimeType.split('/')[1] || 'jpg';
+                const filename = `${msg.key.id}_${Date.now()}.${extension}`;
+                const mediaDir = path.join(STORE_DIR, 'media');
+                const filePath = path.join(mediaDir, filename);
+
+                fs.mkdirSync(mediaDir, { recursive: true });
+                fs.writeFileSync(filePath, buffer);
+                mediaPath = filePath;
+                mediaMimeType = mimeType;
+
+                if (!content) {
+                  content = '[Image]';
+                }
+
+                logger.info({ chatJid, filename, size: buffer.length }, 'Downloaded image');
+              }
+            } catch (err) {
+              logger.error({ err }, 'Image download error');
+              if (!content) {
+                content = '[Image - download failed]';
+              }
+            }
+          }
+
           // Transcribe voice notes
           if (msg.message?.audioMessage?.ptt) {
             try {
@@ -243,6 +286,8 @@ export class WhatsAppChannel implements Channel {
             timestamp,
             is_from_me: fromMe,
             is_bot_message: isBotMessage,
+            media_path: mediaPath,
+            media_mime_type: mediaMimeType,
           });
         }
       }

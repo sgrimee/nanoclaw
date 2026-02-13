@@ -13,6 +13,7 @@ import {
   DATA_DIR,
   GROUPS_DIR,
   IDLE_TIMEOUT,
+  STORE_DIR,
   TIMEZONE,
 } from './config.js';
 import { readEnvFile } from './env.js';
@@ -95,6 +96,16 @@ function buildVolumeMounts(
       mounts.push({
         hostPath: globalDir,
         containerPath: '/workspace/global',
+        readonly: true,
+      });
+    }
+
+    // Mount media directory (read-only) so groups can access images
+    const mediaDir = path.join(STORE_DIR, 'media');
+    if (fs.existsSync(mediaDir)) {
+      mounts.push({
+        hostPath: mediaDir,
+        containerPath: '/workspace/media',
         readonly: true,
       });
     }
