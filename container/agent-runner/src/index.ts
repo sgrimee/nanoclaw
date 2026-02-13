@@ -54,6 +54,7 @@ interface SDKUserMessage {
   session_id: string;
 }
 
+const GROUP_MCP_CONFIG_PATH = '/workspace/group/.mcp.json';
 const IPC_INPUT_DIR = '/workspace/ipc/input';
 const IPC_INPUT_CLOSE_SENTINEL = path.join(IPC_INPUT_DIR, '_close');
 const IPC_POLL_MS = 500;
@@ -324,6 +325,64 @@ function waitForIpcMessage(): Promise<string | null> {
 }
 
 /**
+ * Substitute ${VAR_NAME} patterns in all string values with process.env.
+ */
+function substituteEnvVars(obj: unknown): unknown {
+  if (typeof obj === 'string') {
+    return obj.replace(/\$\{([^}]+)\}/g, (_match, expr) => {
+      const [varName, ...rest] = expr.split(':-');
+      const defaultVal = rest.length > 0 ? rest.join(':-') : undefined;
+      const val = process.env[varName];
+      if (val !== undefined) return val;
+      if (defaultVal !== undefined) return defaultVal;
+      log(`Warning: env var ${varName} not set for MCP config substitution`);
+      return '';
+    });
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(substituteEnvVars);
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      result[key] = substituteEnvVars(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
+/**
+ * Load per-group .mcp.json if it exists.
+ * Returns MCP server configs (with env vars substituted) and allowed tool patterns.
+ */
+function loadGroupMcpServers(): { servers: Record<string, unknown>; allowedTools: string[] } {
+  if (!fs.existsSync(GROUP_MCP_CONFIG_PATH)) {
+    return { servers: {}, allowedTools: [] };
+  }
+
+  try {
+    const raw = fs.readFileSync(GROUP_MCP_CONFIG_PATH, 'utf-8');
+    const config = JSON.parse(raw);
+    const mcpServers = config.mcpServers;
+
+    if (!mcpServers || typeof mcpServers !== 'object') {
+      log('.mcp.json has no mcpServers object, skipping');
+      return { servers: {}, allowedTools: [] };
+    }
+
+    const servers = substituteEnvVars(mcpServers) as Record<string, unknown>;
+    const allowedTools = Object.keys(mcpServers).map(name => `mcp__${name}__*`);
+
+    log(`Loaded ${Object.keys(servers).length} MCP server(s) from .mcp.json: ${Object.keys(servers).join(', ')}`);
+    return { servers, allowedTools };
+  } catch (err) {
+    log(`Failed to load .mcp.json: ${err instanceof Error ? err.message : String(err)}`);
+    return { servers: {}, allowedTools: [] };
+  }
+}
+
+/**
  * Run a single query and stream results via writeOutput.
  * Uses MessageStream (AsyncIterable) to keep isSingleUserTurn=false,
  * allowing agent teams subagents to run to completion.
@@ -389,6 +448,9 @@ async function runQuery(
     log(`Additional directories: ${extraDirs.join(', ')}`);
   }
 
+  // Load per-group MCP servers from .mcp.json
+  const groupMcp = loadGroupMcpServers();
+
   for await (const message of query({
     prompt: stream,
     options: {
@@ -407,7 +469,8 @@ async function runQuery(
         'TeamCreate', 'TeamDelete', 'SendMessage',
         'TodoWrite', 'ToolSearch', 'Skill',
         'NotebookEdit',
-        'mcp__nanoclaw__*'
+        'mcp__nanoclaw__*',
+        ...groupMcp.allowedTools,
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -423,6 +486,7 @@ async function runQuery(
             NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
           },
         },
+        ...groupMcp.servers,
       },
       hooks: {
         PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],
