@@ -29,9 +29,37 @@ enable:
 disable:
     systemctl --user disable nanoclaw
 
-# Tail all logs
+# Tail latest logs and live docker container output
 logs:
-    tail -f logs/*.log
+    #!/usr/bin/env bash
+    set -euo pipefail
+    pids=()
+    declare -A tracked_containers
+    declare -A tracked_logs
+    trap 'kill "${pids[@]}" 2>/dev/null' EXIT
+    # Poll for new log files and containers every 5s
+    while true; do
+        # Discover latest log file per directory
+        for dir in logs groups/*/logs; do
+            [ -d "$dir" ] || continue
+            latest=$(ls -t "$dir"/*.log 2>/dev/null | head -1)
+            if [ -n "$latest" ] && [ -z "${tracked_logs[$latest]:-}" ]; then
+                tracked_logs[$latest]=1
+                tail -f "$latest" &
+                pids+=($!)
+            fi
+        done
+        # Discover new containers
+        for cid in $(docker ps -q --filter name=nanoclaw-); do
+            if [ -z "${tracked_containers[$cid]:-}" ]; then
+                tracked_containers[$cid]=1
+                name=$(docker inspect "$cid" | jq -r '.[0].Name' | tr -d '/')
+                docker logs -f --since 0s "$cid" 2>&1 | sed "s/^/[$name]  /" &
+                pids+=($!)
+            fi
+        done
+        sleep 5
+    done
 
 env:
     @echo "\n**** Variable definitions\n"
