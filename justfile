@@ -32,3 +32,9 @@ disable:
 # Tail all logs
 logs:
     tail -f logs/*.log
+
+env:
+    @echo "\n**** Variable definitions\n"
+    tail -n +1 groups/*/.env
+    @echo "\n\n**** Generated files that will be mounted ==\n"
+    tail -n +1 data/env/*/env
