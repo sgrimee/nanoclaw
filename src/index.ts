@@ -27,6 +27,7 @@ import {
   PROXY_BIND_HOST,
 } from './container-runtime.js';
 import {
+  deleteSession,
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
@@ -178,6 +179,39 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         (m.is_from_me || isTriggerAllowed(chatJid, m.sender, allowlistCfg)),
     );
     if (!hasTrigger) return true;
+  }
+
+  // Check if the last message contains /clear command
+  const lastMessage = missedMessages[missedMessages.length - 1];
+  const clearMatch = lastMessage.content.match(/^(.*?)\/clear\s*([\s\S]*)$/i);
+
+  if (clearMatch) {
+    // Clear the session
+    delete sessions[group.folder];
+    deleteSession(group.folder);
+    logger.info({ group: group.name }, 'Session cleared by user command');
+
+    // Extract the remaining prompt after /clear (if any)
+    const remainingPrompt = clearMatch[2].trim();
+
+    if (remainingPrompt) {
+      // Replace the last message content with the remaining prompt
+      missedMessages[missedMessages.length - 1] = {
+        ...lastMessage,
+        content: remainingPrompt,
+      };
+    } else {
+      // If no prompt after /clear, send confirmation and return
+      await channel.sendMessage(
+        chatJid,
+        `${ASSISTANT_NAME}: ✅ Context cleared! Starting fresh conversation. All files and memory (CLAUDE.md, documents) are still accessible.`,
+      );
+
+      // Update cursor to mark this message as processed
+      lastAgentTimestamp[chatJid] = lastMessage.timestamp;
+      saveState();
+      return true;
+    }
   }
 
   const prompt = formatMessages(missedMessages, TIMEZONE);
