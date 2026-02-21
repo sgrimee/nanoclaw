@@ -4,6 +4,33 @@
 
 This is the **main channel**, which has elevated privileges.
 
+## Commands
+
+### /clear - Reset Conversation Context
+
+Clear the conversation history and start with a fresh context while keeping all files and memory intact.
+
+**Usage:**
+```
+/clear
+```
+or
+```
+/clear What's the weather today?
+```
+
+- Deletes the current session ID to start fresh
+- All CLAUDE.md files, documents, and local files remain accessible
+- Useful when the context gets confusing or mixes old conversations
+- Can include a new prompt after `/clear` in the same message
+
+**Example:**
+```
+/clear Help me plan tomorrow's meetings
+```
+
+This clears the context, then immediately processes "Help me plan tomorrow's meetings" with a fresh session.
+
 ## Container Mounts
 
 Main has read-only access to the project and read-write access to its group folder:
@@ -186,6 +213,66 @@ Read `/workspace/project/data/registered_groups.json` and format it nicely.
 ## Global Memory
 
 You can read and write to `/workspace/project/groups/global/CLAUDE.md` for facts that should apply to all groups. Only update global memory when explicitly asked to "remember this globally" or similar.
+
+---
+
+## Calendar Management with khal
+
+### Calendar UUIDs
+
+Use these UUIDs when adding events (NOT display names):
+- *Famille:* `72FBF8C0-E9A1-43B3-9D13-DD5E46DB19D2`
+- *Nils:* `74B46BF8-6A44-428D-ACA7-0C8775BE7E80`
+- *Lior:* `6226874E-5A04-4888-97C3-07289BAD0F37`
+- *Bandsintown:* `4FF4C5D7-2557-4BC0-B05C-520409B25B2F`
+- *Reminders:* `9ff8bbf1-9481-43c7-a7f9-ba7b6bc16bf1`
+
+### khal Syntax for Adding Events
+
+*Basic event (1 hour):*
+```bash
+./khal-sync.sh new DATE TIME TIMEZONE "TITLE" -a CALENDAR_UUID
+# Example:
+./khal-sync.sh new 22/02/2026 16:45 Europe/Luxembourg "Party" -a "6226874E-5A04-4888-97C3-07289BAD0F37"
+```
+
+*Event with duration:*
+```bash
+./khal-sync.sh new DATE TIME DURATION TIMEZONE "TITLE" -a CALENDAR_UUID
+# Example (2h15m duration):
+./khal-sync.sh new 22/02/2026 16:45 2h15m Europe/Luxembourg "Party" -a "6226874E-5A04-4888-97C3-07289BAD0F37"
+```
+
+*Event with description (use :: separator):*
+```bash
+./khal-sync.sh new DATE TIME DURATION TIMEZONE "TITLE" :: "DESCRIPTION" -a CALENDAR_UUID
+# Example:
+./khal-sync.sh new 22/02/2026 16:45 2h15m Europe/Luxembourg "Birthday Party" :: "Bring gift
+Tel: +352 123 456" -a "6226874E-5A04-4888-97C3-07289BAD0F37"
+```
+
+*Event with location (use -l flag):*
+```bash
+./khal-sync.sh new DATE TIME DURATION TIMEZONE "TITLE" -a CALENDAR_UUID -l "LOCATION"
+# Example:
+./khal-sync.sh new 22/02/2026 16:45 2h15m Europe/Luxembourg "Party" -a "6226874E-5A04-4888-97C3-07289BAD0F37" -l "Restaurant Le Gourmet, 1 Rue Example, L-1234 Luxembourg"
+```
+
+*Complete example with description and location:*
+```bash
+./khal-sync.sh new 22/02/2026 16:45 2h15m Europe/Luxembourg "Birthday - Laser Game" :: "Laser Game Evolution Ettelbruck
+3 Rue Jean-Pierre Thill, L-9085 ETTELBRUCK
+
+Tel: +352 661 500 106" -a "6226874E-5A04-4888-97C3-07289BAD0F37" -l "Laser Game Evolution Ettelbruck, 3 Rue Jean-Pierre Thill, L-9085 ETTELBRUCK"
+```
+
+*Notes:*
+- Always use `./khal-sync.sh` instead of khal directly (auto-syncs to iCloud)
+- Date format: DD/MM/YYYY
+- Time format: HH:MM (24h)
+- Duration: examples: `1h`, `30m`, `2h15m`
+- Timezone: Always use `Europe/Luxembourg`
+- Multi-line descriptions work in the :: section
 
 ---
 
