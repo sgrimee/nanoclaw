@@ -34,6 +34,27 @@ generally used in the group.
 
 You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
 
+### Sending Images
+
+`send_message` accepts an optional `image_path` parameter — an absolute path inside the container to a jpeg, png, webp, or gif file. The image is sent alongside the text message.
+
+Typical workflow:
+1. `agent-browser screenshot /tmp/shot.png` — capture a page
+2. `mcp__nanoclaw__send_message(text="Here's the screenshot", image_path="/tmp/shot.png")`
+
+### Generate Images
+
+Create images from text prompts using FLUX.1 via HuggingFace:
+
+```bash
+img=$(/workspace/project/container/skills/generate-image/generate-image.sh "your prompt here")
+mcp__nanoclaw__send_message(text="Here it is!", image_path="$img")
+```
+
+- Uses FLUX.1-schnell by default (fast, high quality, Apache 2.0)
+- Pass `--model black-forest-labs/FLUX.1-dev` for higher quality (slower)
+- Requires `HF_TOKEN` set in the group's `.env` file
+- First call may take ~20s for model warm-up; subsequent calls are faster
 Add a consistent cocktail emoji next to your name in all messages.
 
 ### Internal thoughts
