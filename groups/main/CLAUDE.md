@@ -190,6 +190,17 @@ Read `/workspace/project/data/registered_groups.json` and format it nicely.
 
 ---
 
+## Memory
+
+The `conversations/` folder contains searchable history of past conversations. Use this to recall context from previous sessions.
+
+When you learn something important:
+- Create files for structured data (e.g., `customers.md`, `preferences.md`)
+- Split files larger than 500 lines into folders
+- Keep an index in your memory for the files you create
+
+---
+
 ## Global Memory
 
 You can read and write to `/workspace/project/groups/global/CLAUDE.md` for facts that should apply to all groups. Only update global memory when explicitly asked to "remember this globally" or similar.
