@@ -286,6 +286,34 @@ export class WhatsAppChannel implements Channel {
     }
   }
 
+  async sendImage(jid: string, buffer: Buffer, caption?: string): Promise<void> {
+    if (!this.connected) {
+      logger.warn({ jid }, 'Not connected, dropping image (images are not queued)');
+      return;
+    }
+
+    try {
+      const translatedJid = await this.translateJid(jid);
+
+      let finalCaption = caption;
+      // Apply name prefix logic (skip if ASSISTANT_HAS_OWN_NUMBER)
+      if (!ASSISTANT_HAS_OWN_NUMBER && caption) {
+        finalCaption = `${ASSISTANT_NAME}: ${caption}`;
+      } else if (!ASSISTANT_HAS_OWN_NUMBER && !caption) {
+        finalCaption = `${ASSISTANT_NAME}:`;
+      }
+
+      await this.sock.sendMessage(translatedJid, {
+        image: buffer,
+        caption: finalCaption,
+      });
+
+      logger.info({ jid: translatedJid }, 'Image sent');
+    } catch (err) {
+      logger.error({ jid, err }, 'Failed to send image');
+    }
+  }
+
   isConnected(): boolean {
     return this.connected;
   }
