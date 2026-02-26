@@ -306,3 +306,25 @@ When scheduling tasks for other groups, use the `target_group_jid` parameter wit
 - `schedule_task(prompt: "...", schedule_type: "cron", schedule_value: "0 9 * * 1", target_group_jid: "120363336345536173@g.us")`
 
 The task will run in that group's context with access to their files and memory.
+
+---
+
+## Music Control
+
+**IMPORTANT**: Always use the **music-assistant** skill for music control, NOT Home Assistant.
+
+- Home Assistant has limited/broken music controls
+- Music Assistant provides full control of all Sonos players and other media devices
+- Use the `music-assistant` skill for: play, pause, resume, volume, search, queue management
+
+Available players via Music Assistant:
+- Sonos salon (RINCON_5CAAFD022FF801400)
+- Sonos Cuisine (RINCON_B8E937829E5A01400)
+- Sonos Sal Manger (RINCON_B8E937D55D7401400)
+- Sonos Nils (RINCON_5CAAFDD60E1A01400)
+- Sonos Lior (RINCON_542A1B47E51801400)
+- Sonos Parents (RINCON_949F3E71F3AE01400)
+- Sonos Salle Bain (RINCON_949F3E71F59C01400)
+- Denon salle cinema (uuid:fe72377e-9e3d-192e-0080-0005cd832ef7)
+- Sejour (syncgroup_xyxggemx)
+- Chambres enfants (syncgroup_yb2huyrt)
