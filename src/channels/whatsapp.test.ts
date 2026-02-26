@@ -933,6 +933,57 @@ describe('WhatsAppChannel', () => {
     });
   });
 
+  // --- sendImage ---
+
+  describe('sendImage', () => {
+    it('sends image with caption when connected', async () => {
+      const opts = createTestOpts();
+      const channel = new WhatsAppChannel(opts);
+
+      await connectChannel(channel);
+
+      const buffer = Buffer.from('fake-image-data');
+      await channel.sendImage('1234567890@s.whatsapp.net', buffer, 'Test caption');
+
+      expect(fakeSocket.sendMessage).toHaveBeenCalledWith(
+        '1234567890@s.whatsapp.net',
+        {
+          image: buffer,
+          caption: 'Andy: Test caption',
+        }
+      );
+    });
+
+    it('sends image with default prefix when no caption', async () => {
+      const opts = createTestOpts();
+      const channel = new WhatsAppChannel(opts);
+
+      await connectChannel(channel);
+
+      const buffer = Buffer.from('fake-image-data');
+      await channel.sendImage('1234567890@s.whatsapp.net', buffer);
+
+      expect(fakeSocket.sendMessage).toHaveBeenCalledWith(
+        '1234567890@s.whatsapp.net',
+        {
+          image: buffer,
+          caption: 'Andy:',
+        }
+      );
+    });
+
+    it('drops image and does not call socket when disconnected', async () => {
+      const opts = createTestOpts();
+      const channel = new WhatsAppChannel(opts);
+      // Deliberately NOT connecting — channel.connected stays false
+
+      const buffer = Buffer.from('fake-image-data');
+      await channel.sendImage('1234567890@s.whatsapp.net', buffer, 'Caption');
+
+      expect(fakeSocket.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
   // --- Channel properties ---
 
   describe('channel properties', () => {

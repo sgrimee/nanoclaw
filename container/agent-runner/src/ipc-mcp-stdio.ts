@@ -44,9 +44,31 @@ server.tool(
   "Send a message to the user or group immediately while you're still running. Use this for progress updates or to send multiple messages. You can call this multiple times. Note: when running as a scheduled task, your final output is NOT sent to the user — use this tool if you need to communicate with the user or group.",
   {
     text: z.string().describe('The message text to send'),
+    image_path: z.string().optional().describe(
+      'Absolute path to an image file to send alongside the message (e.g. /tmp/screenshot.png). Supported formats: jpeg, png, webp, gif.'
+    ),
     sender: z.string().optional().describe('Your role/identity name (e.g. "Researcher"). When set, messages appear from a dedicated bot in Telegram.'),
   },
   async (args) => {
+    if (args.image_path) {
+      const buffer = fs.readFileSync(args.image_path);
+      const ext = path.extname(args.image_path).slice(1).toLowerCase() || 'png';
+      const mimeTypes: Record<string, string> = {
+        jpg: 'image/jpeg', jpeg: 'image/jpeg',
+        png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+      };
+      writeIpcFile(MESSAGES_DIR, {
+        type: 'image',
+        chatJid,
+        imageBase64: buffer.toString('base64'),
+        mimeType: mimeTypes[ext] || 'image/png',
+        caption: args.text || undefined,
+        groupFolder,
+        timestamp: new Date().toISOString(),
+      });
+      return { content: [{ type: 'text' as const, text: 'Image sent.' }] };
+    }
+
     const data: Record<string, string | undefined> = {
       type: 'message',
       chatJid,

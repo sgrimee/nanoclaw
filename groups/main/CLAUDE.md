@@ -4,6 +4,19 @@
 
 This is the **main channel**, which has elevated privileges.
 
+## Sending Images
+
+You can send images (e.g. browser screenshots) directly to WhatsApp using the `send_message` MCP tool:
+
+```
+mcp__nanoclaw__send_message(text="Here's the screenshot", image_path="/tmp/screenshot.png")
+```
+
+- `image_path` must be an absolute path to a file inside the container (e.g. `/tmp/screenshot.png`)
+- Supported formats: jpeg, png, webp, gif
+- The image is sent to WhatsApp along with the text caption
+- After taking a screenshot with `agent-browser screenshot /tmp/screenshot.png`, call `send_message` with `image_path` to deliver it
+
 ## Commands
 
 ### /clear - Reset Conversation Context
