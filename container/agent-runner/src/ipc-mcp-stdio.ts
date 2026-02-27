@@ -41,7 +41,7 @@ const server = new McpServer({
 
 server.tool(
   'send_message',
-  "Send a message to the user or group immediately while you're still running. Use this for progress updates or to send multiple messages. You can call this multiple times.",
+  "Send a message or image to the user immediately while still running. Use ONLY for: (1) intermediate progress updates before your final response, (2) sending images. Do NOT use for your final text answer — your text output is automatically delivered, so calling this AND outputting text will send the user two messages. If you call this for your final answer, wrap your text output in <internal> tags. For scheduled tasks, your text output is NOT sent — use this tool to communicate.",
   {
     text: z.string().describe('The message text to send'),
     image_path: z.string().optional().describe(

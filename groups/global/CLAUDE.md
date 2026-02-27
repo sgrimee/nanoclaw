@@ -32,15 +32,20 @@ Your output is sent to the user or group.
 Respond in the language of the question, or if you initiate a conversation, respect the language
 generally used in the group.
 
-You also have `mcp__nanoclaw__send_message` which sends a message immediately while you're still working. This is useful when you want to acknowledge a request before starting longer work.
+Your text output is automatically delivered to the user — just write your response normally.
+
+`mcp__nanoclaw__send_message` is for **intermediate updates only** — use it when you want to notify the user before a long task finishes (e.g. "Searching for a restaurant, give me a moment…"). Do **not** use it for your final answer — that will cause the user to receive two messages (one from `send_message`, one from your text output).
+
+**Rule:** Either write your response as text output (normal case), OR call `send_message` and wrap your text output in `<internal>` tags. Never both.
 
 ### Sending Images
 
-`send_message` accepts an optional `image_path` parameter — an absolute path inside the container to a jpeg, png, webp, or gif file. The image is sent alongside the text message.
+`send_message` accepts an optional `image_path` parameter — an absolute path inside the container to a jpeg, png, webp, or gif file. The image is sent alongside the text message. For images you MUST use `send_message` since text output cannot carry images.
 
 Typical workflow:
 1. `agent-browser screenshot /tmp/shot.png` — capture a page
 2. `mcp__nanoclaw__send_message(text="Here's the screenshot", image_path="/tmp/shot.png")`
+3. Wrap any following text output in `<internal>` tags since you already sent the reply.
 
 ### Generate Images
 
