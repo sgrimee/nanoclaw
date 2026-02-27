@@ -1,44 +1,29 @@
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { WAMessage, WASocket } from '@whiskeysockets/baileys';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { readEnvFile } from './env.js';
 
 interface TranscriptionConfig {
-  provider: string;
-  openai?: {
-    apiKey: string;
-    model: string;
-  };
+  model: string;
   enabled: boolean;
   fallbackMessage: string;
 }
 
-function loadConfig(): TranscriptionConfig {
-  const configPath = path.join(__dirname, '../.transcription.config.json');
-  try {
-    const configData = fs.readFileSync(configPath, 'utf-8');
-    return JSON.parse(configData);
-  } catch (err) {
-    console.error('Failed to load transcription config:', err);
-    return {
-      provider: 'openai',
-      enabled: false,
-      fallbackMessage: '[Voice Message - transcription unavailable]',
-    };
-  }
-}
+const DEFAULT_CONFIG: TranscriptionConfig = {
+  model: 'whisper-1',
+  enabled: true,
+  fallbackMessage: '[Voice Message - transcription unavailable]',
+};
 
 async function transcribeWithOpenAI(
   audioBuffer: Buffer,
   config: TranscriptionConfig,
 ): Promise<string | null> {
-  if (!config.openai?.apiKey || config.openai.apiKey === '') {
-    console.warn('OpenAI API key not configured');
+  const env = readEnvFile(['OPENAI_API_KEY']);
+  const apiKey = env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    console.warn('OPENAI_API_KEY not set in .env');
     return null;
   }
 
@@ -47,9 +32,7 @@ async function transcribeWithOpenAI(
     const OpenAI = openaiModule.default;
     const toFile = openaiModule.toFile;
 
-    const openai = new OpenAI({
-      apiKey: config.openai.apiKey,
-    });
+    const openai = new OpenAI({ apiKey });
 
     const file = await toFile(audioBuffer, 'voice.ogg', {
       type: 'audio/ogg',
@@ -57,7 +40,7 @@ async function transcribeWithOpenAI(
 
     const transcription = await openai.audio.transcriptions.create({
       file: file,
-      model: config.openai.model || 'whisper-1',
+      model: config.model,
       response_format: 'text',
     });
 
@@ -73,10 +56,9 @@ export async function transcribeAudioMessage(
   msg: WAMessage,
   sock: WASocket,
 ): Promise<string | null> {
-  const config = loadConfig();
+  const config = DEFAULT_CONFIG;
 
   if (!config.enabled) {
-    console.log('Transcription disabled in config');
     return config.fallbackMessage;
   }
 
@@ -98,16 +80,7 @@ export async function transcribeAudioMessage(
 
     console.log(`Downloaded audio message: ${buffer.length} bytes`);
 
-    let transcript: string | null = null;
-
-    switch (config.provider) {
-      case 'openai':
-        transcript = await transcribeWithOpenAI(buffer, config);
-        break;
-      default:
-        console.error(`Unknown transcription provider: ${config.provider}`);
-        return config.fallbackMessage;
-    }
+    const transcript = await transcribeWithOpenAI(buffer, config);
 
     if (!transcript) {
       return config.fallbackMessage;
