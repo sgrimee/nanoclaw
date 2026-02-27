@@ -42,7 +42,7 @@ logs:
         # Discover latest log file per directory
         for dir in logs groups/*/logs; do
             [ -d "$dir" ] || continue
-            latest=$(ls -t "$dir"/*.log 2>/dev/null | head -1)
+            latest=$(ls -t "$dir"/*.log 2>/dev/null | head -1) || true
             if [ -n "$latest" ] && [ -z "${tracked_logs[$latest]:-}" ]; then
                 tracked_logs[$latest]=1
                 tail -f "$latest" &
