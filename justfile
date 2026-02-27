@@ -66,3 +66,16 @@ env:
     tail -n +1 groups/*/.env
     @echo "\n\n**** Generated files that will be mounted ==\n"
     tail -n +1 data/env/*/env
+
+# Compile TypeScript host app
+build:
+    npm run build
+
+# Build agent container image (incremental)
+build-container:
+    cd container && ./build.sh
+
+# Force a fully clean container rebuild (prunes BuildKit cache to avoid stale COPY layers)
+build-container-clean:
+    docker builder prune -af
+    cd container && ./build.sh
