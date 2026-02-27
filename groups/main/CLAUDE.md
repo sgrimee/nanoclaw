@@ -311,20 +311,35 @@ The task will run in that group's context with access to their files and memory.
 
 ## Music Control
 
-**IMPORTANT**: Always use the **music-assistant** skill for music control, NOT Home Assistant.
+**CRITICAL: NEVER use Home Assistant tools (`mcp__homeassistant__*`) for music. They are broken for this purpose.**
 
-- Home Assistant has limited/broken music controls
-- Music Assistant provides full control of all Sonos players and other media devices
-- Use the `music-assistant` skill for: play, pause, resume, volume, search, queue management
+Always run music commands directly via Bash using the music-assistant script:
 
-Available players via Music Assistant:
-- Sonos salon (RINCON_5CAAFD022FF801400)
-- Sonos Cuisine (RINCON_B8E937829E5A01400)
-- Sonos Sal Manger (RINCON_B8E937D55D7401400)
-- Sonos Nils (RINCON_5CAAFDD60E1A01400)
-- Sonos Lior (RINCON_542A1B47E51801400)
-- Sonos Parents (RINCON_949F3E71F3AE01400)
-- Sonos Salle Bain (RINCON_949F3E71F59C01400)
-- Denon salle cinema (uuid:fe72377e-9e3d-192e-0080-0005cd832ef7)
-- Sejour (syncgroup_xyxggemx)
-- Chambres enfants (syncgroup_yb2huyrt)
+```bash
+cd /home/node/.claude/skills/music-assistant
+
+# Play music on a specific player — ALWAYS specify --player
+./music-assistant.sh play "Queen" --player parents
+./music-assistant.sh play "Europa Santana" --player cuisine
+./music-assistant.sh pause --player parents
+./music-assistant.sh resume --player parents
+./music-assistant.sh volume 50 --player parents
+./music-assistant.sh players   # list all players
+```
+
+**Player rules:**
+- Always pass `--player <name-substring>` when the user names a room or speaker
+- Never auto-select a player — playing in the wrong room is unacceptable
+- If no player is specified, ask before playing
+
+Available players (use name substring for `--player`):
+- Sonos salon → `--player salon`
+- Sonos Cuisine → `--player cuisine`
+- Sonos Sal Manger → `--player manger`
+- Sonos Nils → `--player nils`
+- Sonos Lior → `--player lior`
+- Sonos Parents → `--player parents`
+- Sonos Salle Bain → `--player bain`
+- Denon salle cinema → `--player denon`
+- Sejour (group) → `--player sejour`
+- Chambres enfants (group) → `--player chambres`
