@@ -6,6 +6,7 @@ import asyncio
 import os
 import sys
 
+import aiohttp
 from music_assistant_client import MusicAssistantClient
 
 
@@ -351,15 +352,16 @@ async def main() -> None:
     endpoint = get_endpoint()
     token = get_token()
 
-    async with MusicAssistantClient(endpoint, token=token) as client:
-        # Fetch player state so list(client.players) is populated
-        await client.players.fetch_state()
-        # Best-effort: fetch queue state for status/queue commands
-        try:
-            await client.player_queues.fetch_state()
-        except Exception:
-            pass
-        await COMMANDS[args.command](client, args)
+    async with aiohttp.ClientSession() as session:
+        async with MusicAssistantClient(endpoint, session, token=token) as client:
+            # Fetch player state so list(client.players) is populated
+            await client.players.fetch_state()
+            # Best-effort: fetch queue state for status/queue commands
+            try:
+                await client.player_queues.fetch_state()
+            except Exception:
+                pass
+            await COMMANDS[args.command](client, args)
 
 
 if __name__ == "__main__":
