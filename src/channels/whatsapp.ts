@@ -209,7 +209,7 @@ export class WhatsAppChannel implements Channel {
           // Download image messages
           if (msg.message?.imageMessage) {
             try {
-              const buffer = await downloadMediaMessage(
+              const buffer = (await downloadMediaMessage(
                 msg,
                 'buffer',
                 {},
@@ -217,10 +217,11 @@ export class WhatsAppChannel implements Channel {
                   logger,
                   reuploadRequest: this.sock.updateMediaMessage,
                 },
-              ) as Buffer;
+              )) as Buffer;
 
               if (buffer && buffer.length > 0) {
-                const mimeType = msg.message.imageMessage.mimetype || 'image/jpeg';
+                const mimeType =
+                  msg.message.imageMessage.mimetype || 'image/jpeg';
                 const extension = mimeType.split('/')[1] || 'jpg';
                 const filename = `${msg.key.id}_${Date.now()}.${extension}`;
                 const mediaDir = path.join(STORE_DIR, 'media');
@@ -235,7 +236,10 @@ export class WhatsAppChannel implements Channel {
                   content = '[Image]';
                 }
 
-                logger.info({ chatJid, filename, size: buffer.length }, 'Downloaded image');
+                logger.info(
+                  { chatJid, filename, size: buffer.length },
+                  'Downloaded image',
+                );
               }
             } catch (err) {
               logger.error({ err }, 'Image download error');
@@ -248,11 +252,15 @@ export class WhatsAppChannel implements Channel {
           // Transcribe voice notes
           if (msg.message?.audioMessage?.ptt) {
             try {
-              const { transcribeAudioMessage } = await import('../transcription.js');
+              const { transcribeAudioMessage } =
+                await import('../transcription.js');
               const transcript = await transcribeAudioMessage(msg, this.sock);
               if (transcript) {
                 content = `[Voice: ${transcript}]`;
-                logger.info({ chatJid, length: transcript.length }, 'Transcribed voice message');
+                logger.info(
+                  { chatJid, length: transcript.length },
+                  'Transcribed voice message',
+                );
               } else {
                 content = '[Voice Message - transcription unavailable]';
               }
@@ -324,9 +332,16 @@ export class WhatsAppChannel implements Channel {
     }
   }
 
-  async sendImage(jid: string, buffer: Buffer, caption?: string): Promise<void> {
+  async sendImage(
+    jid: string,
+    buffer: Buffer,
+    caption?: string,
+  ): Promise<void> {
     if (!this.connected) {
-      logger.warn({ jid }, 'Not connected, dropping image (images are not queued)');
+      logger.warn(
+        { jid },
+        'Not connected, dropping image (images are not queued)',
+      );
       return;
     }
 

@@ -10,7 +10,14 @@ import {
   TIMEZONE,
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
-import { createTask, deleteTask, getAllTasks, getTaskById, triggerTaskNow, updateTask } from './db.js';
+import {
+  createTask,
+  deleteTask,
+  getAllTasks,
+  getTaskById,
+  triggerTaskNow,
+  updateTask,
+} from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -93,7 +100,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                     'Unauthorized IPC message attempt blocked',
                   );
                 }
-              } else if (data.type === 'image' && data.chatJid && data.imageBase64) {
+              } else if (
+                data.type === 'image' &&
+                data.chatJid &&
+                data.imageBase64
+              ) {
                 const targetGroup = registeredGroups[data.chatJid];
                 if (
                   isMain ||
@@ -101,7 +112,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 ) {
                   if (deps.sendImage) {
                     const buffer = Buffer.from(data.imageBase64, 'base64');
-                    await deps.sendImage(data.chatJid, buffer, data.caption || undefined);
+                    await deps.sendImage(
+                      data.chatJid,
+                      buffer,
+                      data.caption || undefined,
+                    );
                     logger.info(
                       { chatJid: data.chatJid, sourceGroup },
                       'IPC image sent',
@@ -412,25 +427,42 @@ export async function processTaskIpc(
     case 'calendar_sync': {
       // If main container is already active, pipe sync command to it directly
       // (otherwise the task would queue behind the active conversation)
-      const mainJid = Object.entries(registeredGroups)
-        .find(([, g]) => g.folder === MAIN_GROUP_FOLDER)?.[0];
-      if (mainJid && deps.pipeToActiveContainer?.(mainJid, 'Run /workspace/group/sync_calendars.sh now. Wrap output in <internal> tags.')) {
-        logger.info({ sourceGroup }, 'Calendar sync piped to active main container');
+      const mainJid = Object.entries(registeredGroups).find(
+        ([, g]) => g.folder === MAIN_GROUP_FOLDER,
+      )?.[0];
+      if (
+        mainJid &&
+        deps.pipeToActiveContainer?.(
+          mainJid,
+          'Run /workspace/group/sync_calendars.sh now. Wrap output in <internal> tags.',
+        )
+      ) {
+        logger.info(
+          { sourceGroup },
+          'Calendar sync piped to active main container',
+        );
         break;
       }
 
       // No active container — trigger the scheduled task
       const allTasks = getAllTasks();
       const syncTask = allTasks.find(
-        t => t.group_folder === MAIN_GROUP_FOLDER
-          && t.status === 'active'
-          && t.prompt.includes('sync_calendars.sh')
+        (t) =>
+          t.group_folder === MAIN_GROUP_FOLDER &&
+          t.status === 'active' &&
+          t.prompt.includes('sync_calendars.sh'),
       );
       if (syncTask) {
         triggerTaskNow(syncTask.id);
-        logger.info({ sourceGroup, taskId: syncTask.id }, 'Calendar sync triggered via IPC');
+        logger.info(
+          { sourceGroup, taskId: syncTask.id },
+          'Calendar sync triggered via IPC',
+        );
       } else {
-        logger.warn({ sourceGroup }, 'Calendar sync requested but no sync task found');
+        logger.warn(
+          { sourceGroup },
+          'Calendar sync requested but no sync task found',
+        );
       }
       break;
     }
