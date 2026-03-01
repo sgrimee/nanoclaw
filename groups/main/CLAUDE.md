@@ -4,6 +4,15 @@
 
 This is the **main channel**, which has elevated privileges.
 
+## Incoming Attachments
+
+When a message contains a file, the path appears inline:
+- `[Image: /workspace/media/file.jpg]` — use Read tool to view
+- `[PDF: /workspace/media/file.pdf — use Read tool to view contents]` — Read tool renders PDF pages as images
+- `[Document: /workspace/media/file.docx — use Read tool to view contents]`
+
+Always read the attached file before answering questions about it.
+
 ## Communication
 
 Your text output is automatically delivered to the user — just write your response normally.

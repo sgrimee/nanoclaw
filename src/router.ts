@@ -34,7 +34,12 @@ export function formatMessages(messages: NewMessage[]): string {
           : mime.includes('word') || mime.includes('document')
             ? 'Document'
             : 'File';
-      messageContent += `${escapeXml(m.content)}\n[${tag}: ${containerMediaPath}]`;
+      // For non-image files add an explicit read hint — images work without it
+      // because Claude natively handles image reads, but PDFs/docs need prompting.
+      const readHint = mime.startsWith('image/')
+        ? ''
+        : ' — use Read tool to view contents';
+      messageContent += `${escapeXml(m.content)}\n[${tag}: ${containerMediaPath}${readHint}]`;
     } else {
       messageContent += escapeXml(m.content);
     }
