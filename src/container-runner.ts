@@ -99,16 +99,17 @@ function buildVolumeMounts(
         readonly: true,
       });
     }
+  }
 
-    // Mount media directory (read-only) so groups can access images
-    const mediaDir = path.join(STORE_DIR, 'media');
-    if (fs.existsSync(mediaDir)) {
-      mounts.push({
-        hostPath: mediaDir,
-        containerPath: '/workspace/media',
-        readonly: true,
-      });
-    }
+  // Mount media directory (read-only) so the agent can access uploaded images.
+  // Must be mounted for all groups — the prompt references /workspace/media/<file>.
+  const mediaDir = path.join(STORE_DIR, 'media');
+  if (fs.existsSync(mediaDir)) {
+    mounts.push({
+      hostPath: mediaDir,
+      containerPath: '/workspace/media',
+      readonly: true,
+    });
   }
 
   // Per-group Claude sessions directory (isolated from other groups)
