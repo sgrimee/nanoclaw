@@ -264,8 +264,7 @@ export class WhatsAppChannel implements Channel {
               )) as Buffer;
 
               if (buffer && buffer.length > 0) {
-                const mimeType =
-                  docMsg.mimetype || 'application/octet-stream';
+                const mimeType = docMsg.mimetype || 'application/octet-stream';
                 const originalName = docMsg.fileName || '';
                 const ext =
                   path.extname(originalName).replace('.', '') ||
@@ -281,8 +280,7 @@ export class WhatsAppChannel implements Channel {
                 mediaMimeType = mimeType;
 
                 if (!content || content === '[Document]') {
-                  content =
-                    docMsg.caption || docMsg.fileName || '[Document]';
+                  content = docMsg.caption || docMsg.fileName || '[Document]';
                 }
 
                 logger.info(
