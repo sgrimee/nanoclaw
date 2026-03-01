@@ -26,7 +26,15 @@ export function formatMessages(messages: NewMessage[]): string {
         containerMediaPath = `/workspace/media/${filename}`;
       }
       // Include media as attachment that Claude can read
-      messageContent += `${escapeXml(m.content)}\n[Image: ${containerMediaPath}]`;
+      const mime = m.media_mime_type ?? '';
+      const tag = mime.startsWith('image/')
+        ? 'Image'
+        : mime === 'application/pdf'
+          ? 'PDF'
+          : mime.includes('word') || mime.includes('document')
+            ? 'Document'
+            : 'File';
+      messageContent += `${escapeXml(m.content)}\n[${tag}: ${containerMediaPath}]`;
     } else {
       messageContent += escapeXml(m.content);
     }

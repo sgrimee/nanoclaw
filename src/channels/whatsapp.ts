@@ -249,6 +249,55 @@ export class WhatsAppChannel implements Channel {
             }
           }
 
+          // Download document messages (PDF, Office docs, etc.)
+          if (msg.message?.documentMessage) {
+            try {
+              const docMsg = msg.message.documentMessage;
+              const buffer = (await downloadMediaMessage(
+                msg,
+                'buffer',
+                {},
+                {
+                  logger,
+                  reuploadRequest: this.sock.updateMediaMessage,
+                },
+              )) as Buffer;
+
+              if (buffer && buffer.length > 0) {
+                const mimeType =
+                  docMsg.mimetype || 'application/octet-stream';
+                const originalName = docMsg.fileName || '';
+                const ext =
+                  path.extname(originalName).replace('.', '') ||
+                  mimeType.split('/')[1]?.split(';')[0] ||
+                  'bin';
+                const filename = `${msg.key.id}_${Date.now()}.${ext}`;
+                const mediaDir = path.join(STORE_DIR, 'media');
+                const filePath = path.join(mediaDir, filename);
+
+                fs.mkdirSync(mediaDir, { recursive: true });
+                fs.writeFileSync(filePath, buffer);
+                mediaPath = filePath;
+                mediaMimeType = mimeType;
+
+                if (!content || content === '[Document]') {
+                  content =
+                    docMsg.caption || docMsg.fileName || '[Document]';
+                }
+
+                logger.info(
+                  { chatJid, filename, size: buffer.length, mimeType },
+                  'Downloaded document',
+                );
+              }
+            } catch (err) {
+              logger.error({ err }, 'Document download error');
+              if (!content) {
+                content = '[Document - download failed]';
+              }
+            }
+          }
+
           // Transcribe voice notes
           if (msg.message?.audioMessage?.ptt) {
             try {

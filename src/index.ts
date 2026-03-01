@@ -152,10 +152,12 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   if (missedMessages.length === 0) return true;
 
-  // For non-main groups, check if trigger is required and present
+  // For non-main groups, check if trigger is required and present.
+  // Media uploads (images, documents) are treated as implicit triggers so the
+  // agent is notified automatically without needing an @mention caption.
   if (!isMainGroup && group.requiresTrigger !== false) {
-    const hasTrigger = missedMessages.some((m) =>
-      TRIGGER_PATTERN.test(m.content.trim()),
+    const hasTrigger = missedMessages.some(
+      (m) => m.media_path || TRIGGER_PATTERN.test(m.content.trim()),
     );
     if (!hasTrigger) return true;
   }
@@ -412,8 +414,8 @@ async function startMessageLoop(): Promise<void> {
           // Non-trigger messages accumulate in DB and get pulled as
           // context when a trigger eventually arrives.
           if (needsTrigger) {
-            const hasTrigger = groupMessages.some((m) =>
-              TRIGGER_PATTERN.test(m.content.trim()),
+            const hasTrigger = groupMessages.some(
+              (m) => m.media_path || TRIGGER_PATTERN.test(m.content.trim()),
             );
             if (!hasTrigger) continue;
           }
