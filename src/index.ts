@@ -690,7 +690,8 @@ async function main(): Promise<void> {
         writeTasksSnapshot(group.folder, group.isMain === true, taskRows);
       }
     },
-    pipeToActiveContainer: (chatJid, message) => queue.sendMessage(chatJid, message),
+    pipeToActiveContainer: (chatJid, message) =>
+      queue.sendMessage(chatJid, message),
   });
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();

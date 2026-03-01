@@ -453,8 +453,10 @@ export function deleteTask(id: string): void {
 }
 
 export function triggerTaskNow(id: string): void {
-  db.prepare('UPDATE scheduled_tasks SET next_run = ? WHERE id = ?')
-    .run(new Date().toISOString(), id);
+  db.prepare('UPDATE scheduled_tasks SET next_run = ? WHERE id = ?').run(
+    new Date().toISOString(),
+    id,
+  );
 }
 
 export function getDueTasks(): ScheduledTask[] {

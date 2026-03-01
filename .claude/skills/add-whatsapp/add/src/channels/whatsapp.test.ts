@@ -944,14 +944,18 @@ describe('WhatsAppChannel', () => {
       await connectChannel(channel);
 
       const buffer = Buffer.from('fake-image-data');
-      await channel.sendImage('1234567890@s.whatsapp.net', buffer, 'Test caption');
+      await channel.sendImage(
+        '1234567890@s.whatsapp.net',
+        buffer,
+        'Test caption',
+      );
 
       expect(fakeSocket.sendMessage).toHaveBeenCalledWith(
         '1234567890@s.whatsapp.net',
         {
           image: buffer,
           caption: 'Andy: Test caption',
-        }
+        },
       );
     });
 
@@ -969,7 +973,7 @@ describe('WhatsAppChannel', () => {
         {
           image: buffer,
           caption: 'Andy:',
-        }
+        },
       );
     });
 
