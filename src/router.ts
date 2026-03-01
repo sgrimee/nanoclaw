@@ -39,7 +39,14 @@ export function formatMessages(messages: NewMessage[]): string {
       const readHint = mime.startsWith('image/')
         ? ''
         : ' — use Read tool to view contents';
-      messageContent += `${escapeXml(m.content)}\n[${tag}: ${containerMediaPath}${readHint}]`;
+      // Attachment reference goes FIRST so the agent sees the file before any
+      // caption/question. If the caption is just the placeholder tag, omit it.
+      const placeholderTag = `[${tag}]`;
+      const caption =
+        m.content && m.content !== placeholderTag
+          ? `\n${escapeXml(m.content)}`
+          : '';
+      messageContent += `[${tag}: ${containerMediaPath}${readHint}]${caption}`;
     } else {
       messageContent += escapeXml(m.content);
     }
