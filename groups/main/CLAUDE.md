@@ -4,7 +4,17 @@
 
 This is the **main channel**, which has elevated privileges.
 
-## Sending Images
+## Communication
+
+Your text output is automatically delivered to the user — just write your response normally.
+
+`mcp__nanoclaw__send_message` is for **intermediate updates only** — use it when you want to notify the user before a long task finishes (e.g. "Searching for a restaurant, give me a moment…"). Do **not** use it for your final answer — that will cause the user to receive two messages (one from `send_message`, one from your text output).
+
+**Rule:** Either write your response as text output (normal case), OR call `send_message` and wrap your text output in `<internal>` tags. Never both.
+
+Respond in the language of the question.
+
+### Sending Images
 
 You can send images (e.g. browser screenshots) directly to WhatsApp using the `send_message` MCP tool:
 
@@ -16,6 +26,20 @@ mcp__nanoclaw__send_message(text="Here's the screenshot", image_path="/tmp/scree
 - Supported formats: jpeg, png, webp, gif
 - The image is sent to WhatsApp along with the text caption
 - After taking a screenshot with `agent-browser screenshot /tmp/screenshot.png`, call `send_message` with `image_path` to deliver it
+
+## Message Formatting
+
+NEVER use markdown. Only use WhatsApp/Telegram formatting:
+- *single asterisks* for bold (NEVER **double asterisks**)
+- _underscores_ for italic
+- • bullet points
+- ```triple backticks``` for code
+
+No ## headings. No [links](url). No **double stars**.
+
+## Web Search
+
+Use the `perplexity-search` skill for all web searches. Fall back to WebSearch/WebFetch only if it fails.
 
 ## Commands
 
