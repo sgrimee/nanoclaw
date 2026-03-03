@@ -41,15 +41,20 @@ const server = new McpServer({
 
 server.tool(
   'send_message',
-  "Send a message or image to the user immediately while still running. Use ONLY for: (1) intermediate progress updates before your final response, (2) sending images. Do NOT use for your final text answer — your text output is automatically delivered, so calling this AND outputting text will send the user two messages. If you call this for your final answer, wrap your text output in <internal> tags. For scheduled tasks, your text output is NOT sent — use this tool to communicate.",
+  "Send a message or image to the user immediately while still running. Use ONLY for: (1) intermediate progress updates before your final response, (2) sending images, (3) sending messages to other registered groups (main group only). Do NOT use for your final text answer — your text output is automatically delivered, so calling this AND outputting text will send the user two messages. If you call this for your final answer, wrap your text output in <internal> tags. For scheduled tasks, your text output is NOT sent — use this tool to communicate.",
   {
     text: z.string().describe('The message text to send'),
     image_path: z.string().optional().describe(
       'Absolute path to an image file to send alongside the message (e.g. /tmp/screenshot.png). Supported formats: jpeg, png, webp, gif.'
     ),
     sender: z.string().optional().describe('Your role/identity name (e.g. "Researcher"). When set, messages appear from a dedicated bot in Telegram.'),
+    target_group_jid: z.string().optional().describe(
+      '(Main group only) JID of the registered group to send to (e.g. "120363336345536173@g.us"). Defaults to the current group. Find JIDs in /workspace/ipc/available_groups.json.'
+    ),
   },
   async (args) => {
+    const targetJid = (isMain && args.target_group_jid) ? args.target_group_jid : chatJid;
+
     if (args.image_path) {
       const buffer = fs.readFileSync(args.image_path);
       const ext = path.extname(args.image_path).slice(1).toLowerCase() || 'png';
@@ -59,7 +64,7 @@ server.tool(
       };
       writeIpcFile(MESSAGES_DIR, {
         type: 'image',
-        chatJid,
+        chatJid: targetJid,
         imageBase64: buffer.toString('base64'),
         mimeType: mimeTypes[ext] || 'image/png',
         caption: args.text || undefined,
@@ -71,7 +76,7 @@ server.tool(
 
     const data: Record<string, string | undefined> = {
       type: 'message',
-      chatJid,
+      chatJid: targetJid,
       text: args.text,
       sender: args.sender || undefined,
       groupFolder,
