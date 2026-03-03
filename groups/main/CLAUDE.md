@@ -36,6 +36,16 @@ mcp__nanoclaw__send_message(text="Here's the screenshot", image_path="/tmp/scree
 - The image is sent to WhatsApp along with the text caption
 - After taking a screenshot with `agent-browser screenshot /tmp/screenshot.png`, call `send_message` with `image_path` to deliver it
 
+### Sending Messages to Other Groups
+
+As the main group, you can send messages to any registered group using `target_group_jid`:
+
+```
+mcp__nanoclaw__send_message(text="Hello from main!", target_group_jid="120363336345536173@g.us")
+```
+
+Find group JIDs in `/workspace/ipc/available_groups.json` (filter by `isRegistered: true`). Always wrap your own text output in `<internal>` tags when using this for your final action, to avoid sending two messages.
+
 ## Message Formatting
 
 NEVER use markdown. Only use WhatsApp/Telegram formatting:
