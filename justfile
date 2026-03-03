@@ -79,3 +79,7 @@ build-container:
 build-container-clean:
     docker builder prune -af
     cd container && ./build.sh
+
+build-all: build build-container restart
+
+build-all-clean: build build-container-clean restart
