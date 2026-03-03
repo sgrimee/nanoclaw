@@ -20,6 +20,7 @@ import {
   ensureContainerRuntimeRunning,
 } from './container-runtime.js';
 import {
+  deleteRegisteredGroup,
   deleteSession,
   getAllChats,
   getAllRegisteredGroups,
@@ -99,6 +100,16 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   logger.info(
     { jid, name: group.name, folder: group.folder },
     'Group registered',
+  );
+}
+
+function unregisterGroup(jid: string): void {
+  const group = registeredGroups[jid];
+  deleteRegisteredGroup(jid);
+  delete registeredGroups[jid];
+  logger.info(
+    { jid, name: group?.name, folder: group?.folder },
+    'Group unregistered',
   );
 }
 
@@ -549,6 +560,7 @@ async function main(): Promise<void> {
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
+    unregisterGroup,
     syncGroupMetadata: (force) =>
       whatsapp?.syncGroupMetadata(force) ?? Promise.resolve(),
     getAvailableGroups,

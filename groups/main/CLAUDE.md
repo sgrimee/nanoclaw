@@ -216,14 +216,21 @@ The directory will appear at `/workspace/extra/webapp` in that group's container
 
 ### Removing a Group
 
-1. Read `/workspace/project/data/registered_groups.json`
-2. Remove the entry for that group
-3. Write the updated JSON back
-4. The group folder and its files remain (don't delete them)
+Use the `unregister_group` MCP tool:
+
+```
+mcp__nanoclaw__unregister_group(jid="120363336345536173@g.us", name="Testing")
+```
+
+Find the JID from `/workspace/ipc/available_groups.json` (filter by `isRegistered: true`) or query the database. The group folder and its files are preserved.
 
 ### Listing Groups
 
-Read `/workspace/project/data/registered_groups.json` and format it nicely.
+Read `/workspace/ipc/available_groups.json` (filter by `isRegistered: true`) or query the database directly:
+
+```bash
+sqlite3 /workspace/project/store/messages.db "SELECT jid, name, folder, trigger_pattern FROM registered_groups;"
+```
 
 ---
 
