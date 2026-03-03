@@ -16,12 +16,10 @@ export function formatMessages(
 ): string {
   const lines = messages.map((m) => {
     const displayTime = formatLocalTime(m.timestamp, timezone);
-    return `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}">${escapeXml(m.content)}</message>`;
+    const messageContent = `<message sender="${escapeXml(m.sender_name)}" time="${escapeXml(displayTime)}">${escapeXml(m.content)}</message>`;
+    return messageContent;
   });
-
-  const header = `<context timezone="${escapeXml(timezone)}" />\n`;
-
-  return `${header}<messages>\n${lines.join('\n')}\n</messages>`;
+  return `<context timezone="${escapeXml(timezone)}" />\n<messages>\n${lines.join('\n')}\n</messages>`;
 }
 
 export function stripInternalTags(text: string): string {

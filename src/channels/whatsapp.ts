@@ -16,9 +16,11 @@ import makeWASocket, {
 import {
   ASSISTANT_HAS_OWN_NUMBER,
   ASSISTANT_NAME,
+  GROUPS_DIR,
   STORE_DIR,
 } from '../config.js';
 import { getLastGroupSync, setLastGroupSync, updateChatName } from '../db.js';
+import { isImageMessage, processImage } from '../image.js';
 import { logger } from '../logger.js';
 import {
   Channel,
@@ -234,96 +236,59 @@ export class WhatsAppChannel implements Channel {
             normalized.videoMessage?.caption ||
             '';
 
-          let mediaPath: string | undefined;
-          let mediaMimeType: string | undefined;
+          const group = groups[chatJid];
+          const groupDir = path.join(GROUPS_DIR, group.folder);
+          const attachDir = path.join(groupDir, 'attachments');
 
-          // Download image messages
-          if (msg.message?.imageMessage) {
+          // Image attachment handling
+          if (isImageMessage(msg)) {
             try {
-              const buffer = (await downloadMediaMessage(
-                msg,
-                'buffer',
-                {},
-                {
-                  logger,
-                  reuploadRequest: this.sock.updateMediaMessage,
-                },
-              )) as Buffer;
-
-              if (buffer && buffer.length > 0) {
-                const mimeType =
-                  msg.message.imageMessage.mimetype || 'image/jpeg';
-                const extension = mimeType.split('/')[1] || 'jpg';
-                const filename = `${msg.key.id}_${Date.now()}.${extension}`;
-                const mediaDir = path.join(STORE_DIR, 'media');
-                const filePath = path.join(mediaDir, filename);
-
-                fs.mkdirSync(mediaDir, { recursive: true });
-                fs.writeFileSync(filePath, buffer);
-                mediaPath = filePath;
-                mediaMimeType = mimeType;
-
-                if (!content) {
-                  content = '[Image]';
-                }
-
+              const buffer = await downloadMediaMessage(msg, 'buffer', {});
+              const caption = normalized?.imageMessage?.caption ?? '';
+              const result = await processImage(
+                buffer as Buffer,
+                groupDir,
+                caption,
+              );
+              if (result) {
+                content = result.content;
                 logger.info(
-                  { chatJid, filename, size: buffer.length },
-                  'Downloaded image',
+                  { chatJid, relativePath: result.relativePath },
+                  'Processed image attachment',
                 );
               }
             } catch (err) {
-              logger.error({ err }, 'Image download error');
-              if (!content) {
-                content = '[Image - download failed]';
-              }
+              logger.warn({ err, jid: chatJid }, 'Image - download failed');
+              if (!content) content = '[Image - download failed]';
             }
           }
 
-          // Download document messages (PDF, Office docs, etc.)
-          if (msg.message?.documentMessage) {
+          // PDF attachment handling
+          if (normalized?.documentMessage?.mimetype === 'application/pdf') {
             try {
-              const docMsg = msg.message.documentMessage;
-              const buffer = (await downloadMediaMessage(
-                msg,
-                'buffer',
-                {},
-                {
-                  logger,
-                  reuploadRequest: this.sock.updateMediaMessage,
-                },
-              )) as Buffer;
-
-              if (buffer && buffer.length > 0) {
-                const mimeType = docMsg.mimetype || 'application/octet-stream';
-                const originalName = docMsg.fileName || '';
-                const ext =
-                  path.extname(originalName).replace('.', '') ||
-                  mimeType.split('/')[1]?.split(';')[0] ||
-                  'bin';
-                const filename = `${msg.key.id}_${Date.now()}.${ext}`;
-                const mediaDir = path.join(STORE_DIR, 'media');
-                const filePath = path.join(mediaDir, filename);
-
-                fs.mkdirSync(mediaDir, { recursive: true });
-                fs.writeFileSync(filePath, buffer);
-                mediaPath = filePath;
-                mediaMimeType = mimeType;
-
-                if (!content || content === '[Document]') {
-                  content = docMsg.caption || docMsg.fileName || '[Document]';
-                }
-
-                logger.info(
-                  { chatJid, filename, size: buffer.length, mimeType },
-                  'Downloaded document',
-                );
-              }
+              const buffer = await downloadMediaMessage(msg, 'buffer', {});
+              fs.mkdirSync(attachDir, { recursive: true });
+              const rawName =
+                normalized.documentMessage.fileName || `doc-${Date.now()}.pdf`;
+              const filename = path
+                .basename(rawName)
+                .replace(/[^a-zA-Z0-9._-]/g, '_');
+              const filePath = path.join(attachDir, filename);
+              fs.writeFileSync(filePath, buffer as Buffer);
+              const sizeKB = Math.round((buffer as Buffer).length / 1024);
+              const pdfRef = `[PDF: attachments/${filename} (${sizeKB}KB)]\nUse: pdf-reader extract attachments/${filename}`;
+              const caption = normalized.documentMessage.caption || '';
+              content = caption ? `${caption}\n\n${pdfRef}` : pdfRef;
+              logger.info(
+                { chatJid, filename, sizeKB },
+                'Downloaded PDF attachment',
+              );
             } catch (err) {
-              logger.error({ err }, 'Document download error');
-              if (!content) {
-                content = '[Document - download failed]';
-              }
+              logger.warn(
+                { err, jid: chatJid },
+                'Failed to download PDF attachment',
+              );
+              if (!content) content = '[PDF - download failed]';
             }
           }
 
@@ -372,8 +337,6 @@ export class WhatsAppChannel implements Channel {
             timestamp,
             is_from_me: fromMe,
             is_bot_message: isBotMessage,
-            media_path: mediaPath,
-            media_mime_type: mediaMimeType,
           });
         }
       }

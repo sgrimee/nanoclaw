@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y \
     libxshmfence1 \
     curl \
     git \
+    poppler-utils \
     python3 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,6 +53,10 @@ COPY agent-runner/ ./
 
 # Build TypeScript
 RUN npm run build
+
+# Install pdf-reader CLI
+COPY skills/pdf-reader/pdf-reader /usr/local/bin/pdf-reader
+RUN chmod +x /usr/local/bin/pdf-reader
 
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input
