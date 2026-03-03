@@ -530,9 +530,11 @@ export async function processTaskIpc(
     case 'calendar_sync': {
       // If main container is already active, pipe sync command to it directly
       // (otherwise the task would queue behind the active conversation)
-      const mainJid = Object.entries(registeredGroups).find(
-        ([, g]) => g.folder === MAIN_GROUP_FOLDER,
-      )?.[0];
+      const mainEntry = Object.entries(registeredGroups).find(
+        ([, g]) => g.isMain === true,
+      );
+      const mainJid = mainEntry?.[0];
+      const mainFolder = mainEntry?.[1].folder;
       if (
         mainJid &&
         deps.pipeToActiveContainer?.(
@@ -551,7 +553,7 @@ export async function processTaskIpc(
       const allTasks = getAllTasks();
       const syncTask = allTasks.find(
         (t) =>
-          t.group_folder === MAIN_GROUP_FOLDER &&
+          t.group_folder === mainFolder &&
           t.status === 'active' &&
           t.prompt.includes('sync_calendars.sh'),
       );
