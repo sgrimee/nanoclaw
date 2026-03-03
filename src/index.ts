@@ -12,6 +12,7 @@ import { WhatsAppChannel } from './channels/whatsapp.js';
 import {
   ContainerOutput,
   runContainerAgent,
+  writeContactsSnapshot,
   writeGroupsSnapshot,
   writeTasksSnapshot,
 } from './container-runner.js';
@@ -23,6 +24,7 @@ import {
   deleteRegisteredGroup,
   deleteSession,
   getAllChats,
+  getAllContacts,
   getAllRegisteredGroups,
   getAllSessions,
   getAllTasks,
@@ -35,6 +37,7 @@ import {
   setSession,
   storeChatMetadata,
   storeMessage,
+  upsertContacts,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
@@ -325,6 +328,12 @@ async function runAgent(
     new Set(Object.keys(registeredGroups)),
   );
 
+  // Write contacts snapshot (main group only)
+  if (isMain) {
+    const contacts = getAllContacts();
+    writeContactsSnapshot(group.folder, contacts);
+  }
+
   // Wrap onOutput to track session ID from streamed results
   const wrappedOnOutput = onOutput
     ? async (output: ContainerOutput) => {
@@ -518,6 +527,9 @@ async function main(): Promise<void> {
       channel?: string,
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
+    onContactsUpdate: (
+      contacts: Array<{ id: string; name?: string; notify?: string }>,
+    ) => upsertContacts(contacts),
     registeredGroups: () => registeredGroups,
   };
 

@@ -337,6 +337,51 @@ server.tool(
   },
 );
 
+server.tool(
+  'lookup_contact',
+  'Look up a WhatsApp contact by name to get their JID for sending messages. Returns matching contacts. Then use send_message with the found JID. Main group only.',
+  {
+    name: z.string().describe('Name or partial name to search for (case-insensitive)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'lookup_contact is only available from the main group.' }],
+        isError: true,
+      };
+    }
+
+    const contactsFile = path.join(IPC_DIR, 'contacts.json');
+    if (!fs.existsSync(contactsFile)) {
+      return { content: [{ type: 'text' as const, text: 'No contacts available yet. Try again after WhatsApp syncs.' }] };
+    }
+
+    const contacts: Array<{ jid: string; name: string | null; notify: string | null }> =
+      JSON.parse(fs.readFileSync(contactsFile, 'utf-8'));
+
+    const query = args.name.toLowerCase();
+    const matches = contacts.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(query) ||
+        c.notify?.toLowerCase().includes(query),
+    );
+
+    if (matches.length === 0) {
+      return { content: [{ type: 'text' as const, text: `No contacts found matching "${args.name}".` }] };
+    }
+
+    const formatted = matches
+      .map((c) => {
+        const displayName = c.name || c.notify;
+        const notifyPart = c.notify && c.notify !== c.name ? `, known as "${c.notify}"` : '';
+        return `- ${displayName}${notifyPart} (JID: ${c.jid})`;
+      })
+      .join('\n');
+
+    return { content: [{ type: 'text' as const, text: `Matching contacts:\n${formatted}` }] };
+  },
+);
+
 // Start the stdio transport
 const transport = new StdioServerTransport();
 await server.connect(transport);

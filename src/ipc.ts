@@ -444,7 +444,10 @@ export async function processTaskIpc(
           break;
         }
         deps.unregisterGroup(data.jid);
-        logger.info({ jid: data.jid, sourceGroup }, 'Group unregistered via IPC');
+        logger.info(
+          { jid: data.jid, sourceGroup },
+          'Group unregistered via IPC',
+        );
       } else {
         logger.warn({ data }, 'Invalid unregister_group request - missing jid');
       }

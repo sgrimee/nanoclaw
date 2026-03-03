@@ -84,6 +84,11 @@ function createSchema(database: Database.Database): void {
       container_config TEXT,
       requires_trigger INTEGER DEFAULT 1
     );
+    CREATE TABLE IF NOT EXISTS contacts (
+      jid TEXT PRIMARY KEY,
+      name TEXT,
+      notify TEXT
+    );
   `);
 
   // Add context_mode column if it doesn't exist (migration for existing DBs)
@@ -151,6 +156,9 @@ export function initDatabase(): void {
 
   // Migrate from JSON files if they exist
   migrateJsonState();
+
+  // Seed contacts table from existing message history (idempotent)
+  backfillContactsFromMessages();
 }
 
 /** @internal - for tests only. Creates a fresh in-memory database. */
@@ -635,6 +643,83 @@ export function getAllRegisteredGroups(): Record<string, RegisteredGroup> {
     };
   }
   return result;
+}
+
+// --- Contact accessors ---
+
+/**
+ * Resolve a LID JID (e.g. "281411189743777@lid") to a phone JID
+ * (e.g. "352621395646@s.whatsapp.net") using Baileys' auth mapping files.
+ * Returns the original JID unchanged if no mapping is found.
+ */
+function resolveLidToPhone(jid: string): string {
+  if (!jid.endsWith('@lid')) return jid;
+  const lidNumber = jid.split('@')[0].split(':')[0];
+  const mappingFile = path.join(
+    STORE_DIR,
+    'auth',
+    `lid-mapping-${lidNumber}_reverse.json`,
+  );
+  try {
+    const phoneNumber: string = JSON.parse(
+      fs.readFileSync(mappingFile, 'utf-8'),
+    );
+    if (phoneNumber) return `${phoneNumber}@s.whatsapp.net`;
+  } catch {
+    // No mapping found — keep LID as fallback
+  }
+  return jid;
+}
+
+export function upsertContacts(
+  contacts: Array<{ id: string; name?: string; notify?: string }>,
+): void {
+  const stmt = db.prepare(
+    `INSERT INTO contacts (jid, name, notify) VALUES (?, ?, ?)
+     ON CONFLICT(jid) DO UPDATE SET
+       name = COALESCE(excluded.name, name),
+       notify = COALESCE(excluded.notify, notify)`,
+  );
+  const insert = db.transaction(() => {
+    for (const c of contacts) {
+      if (!c.name && !c.notify) continue;
+      const jid = resolveLidToPhone(c.id);
+      stmt.run(jid, c.name ?? null, c.notify ?? null);
+    }
+  });
+  insert();
+}
+
+export interface ContactInfo {
+  jid: string;
+  name: string | null;
+  notify: string | null;
+}
+
+export function getAllContacts(): ContactInfo[] {
+  return db
+    .prepare(`SELECT jid, name, notify FROM contacts ORDER BY name`)
+    .all() as ContactInfo[];
+}
+
+/**
+ * Backfill the contacts table from stored message history.
+ * Reads sender/sender_name pairs from the messages table and upserts them.
+ * Safe to call on every startup — upsert is idempotent.
+ */
+export function backfillContactsFromMessages(): void {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT sender AS id, sender_name AS notify
+       FROM messages
+       WHERE is_from_me = 0
+         AND sender_name IS NOT NULL AND sender_name != ''
+         AND sender_name NOT LIKE '%@%'`,
+    )
+    .all() as Array<{ id: string; notify: string }>;
+  if (rows.length > 0) {
+    upsertContacts(rows);
+  }
 }
 
 // --- JSON migration ---
