@@ -23,6 +23,7 @@ import {
   Channel,
   OnInboundMessage,
   OnChatMetadata,
+  OnContactsUpdate,
   RegisteredGroup,
 } from '../types.js';
 import { registerChannel, ChannelOpts } from './registry.js';
@@ -32,6 +33,7 @@ const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export interface WhatsAppChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
+  onContactsUpdate?: OnContactsUpdate;
   registeredGroups: () => Record<string, RegisteredGroup>;
 }
 
@@ -170,6 +172,28 @@ export class WhatsAppChannel implements Channel {
     });
 
     this.sock.ev.on('creds.update', saveCreds);
+
+    this.sock.ev.on('messaging-history.set', ({ contacts }) => {
+      if (contacts.length > 0) {
+        this.opts.onContactsUpdate?.(contacts);
+      }
+    });
+
+    this.sock.ev.on('contacts.upsert', (contacts) => {
+      if (contacts.length > 0) {
+        this.opts.onContactsUpdate?.(contacts);
+      }
+    });
+
+    this.sock.ev.on('contacts.update', (updates) => {
+      const contacts = updates.filter(
+        (u): u is { id: string; name?: string; notify?: string } =>
+          typeof u.id === 'string' && (!!u.name || !!u.notify),
+      );
+      if (contacts.length > 0) {
+        this.opts.onContactsUpdate?.(contacts);
+      }
+    });
 
     this.sock.ev.on('messages.upsert', async ({ messages }) => {
       for (const msg of messages) {
