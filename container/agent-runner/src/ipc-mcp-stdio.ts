@@ -360,6 +360,36 @@ Use available_groups.json to find the JID for a group. The folder name must be c
   },
 );
 
+server.tool(
+  'unregister_group',
+  'Unregister a WhatsApp group so the agent stops responding to messages there. Main group only. The group folder and its files are kept intact.',
+  {
+    jid: z.string().describe('The WhatsApp JID of the group to unregister (e.g., "120363336345536173@g.us")'),
+    name: z.string().describe('Display name of the group (for confirmation in logs)'),
+  },
+  async (args) => {
+    if (!isMain) {
+      return {
+        content: [{ type: 'text' as const, text: 'Only the main group can unregister groups.' }],
+        isError: true,
+      };
+    }
+
+    const data = {
+      type: 'unregister_group',
+      jid: args.jid,
+      name: args.name,
+      timestamp: new Date().toISOString(),
+    };
+
+    writeIpcFile(TASKS_DIR, data);
+
+    return {
+      content: [{ type: 'text' as const, text: `Group "${args.name}" unregistration requested. It will stop receiving messages shortly. Group files are preserved.` }],
+    };
+  },
+);
+
 // Start the stdio transport
 const transport = new StdioServerTransport();
 await server.connect(transport);

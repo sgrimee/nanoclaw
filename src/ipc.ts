@@ -7,6 +7,7 @@ import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import {
   createTask,
+  deleteRegisteredGroup,
   deleteTask,
   getAllTasks,
   getTaskById,
@@ -31,6 +32,7 @@ export interface IpcDeps {
     registeredJids: Set<string>,
   ) => void;
   onTasksChanged: () => void;
+  unregisterGroup: (jid: string) => void;
   /** Try to pipe a message to an active container. Returns true if sent. */
   pipeToActiveContainer?: (chatJid: string, message: string) => boolean;
 }
@@ -208,7 +210,7 @@ export async function processTaskIpc(
     groupFolder?: string;
     chatJid?: string;
     targetJid?: string;
-    // For register_group
+    // For register_group / unregister_group
     jid?: string;
     name?: string;
     folder?: string;
@@ -495,6 +497,30 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'unregister_group':
+      // Only main group can unregister groups
+      if (!isMain) {
+        logger.warn(
+          { sourceGroup },
+          'Unauthorized unregister_group attempt blocked',
+        );
+        break;
+      }
+      if (data.jid) {
+        if (!registeredGroups[data.jid]) {
+          logger.warn(
+            { jid: data.jid },
+            'unregister_group: JID not found in registered groups',
+          );
+          break;
+        }
+        deps.unregisterGroup(data.jid);
+        logger.info({ jid: data.jid, sourceGroup }, 'Group unregistered via IPC');
+      } else {
+        logger.warn({ data }, 'Invalid unregister_group request - missing jid');
       }
       break;
 
