@@ -507,7 +507,6 @@ async function runQuery(
       systemPrompt: globalClaudeMd
         ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
         : undefined,
-      model: 'sonnet[1m]',
       allowedTools: [
         'Bash',
         'Read', 'Write', 'Edit', 'Glob', 'Grep',
@@ -610,7 +609,7 @@ async function main(): Promise<void> {
   }
   const sdkEnv: Record<string, string | undefined> = {
     ...process.env,
-    CLAUDE_CODE_AUTO_COMPACT_WINDOW: '200000',
+    CLAUDE_CODE_AUTO_COMPACT_WINDOW: '165000',
   };
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
