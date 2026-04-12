@@ -30,9 +30,11 @@ interface ContainerInput {
   imageAttachments?: Array<{ relativePath: string; mediaType: string }>;
 }
 
+type ImageMediaType = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+
 interface ImageContentBlock {
   type: 'image';
-  source: { type: 'base64'; media_type: string; data: string };
+  source: { type: 'base64'; media_type: ImageMediaType; data: string };
 }
 interface TextContentBlock {
   type: 'text';
@@ -435,7 +437,7 @@ async function runQuery(
       const imgPath = path.join('/workspace/group', img.relativePath);
       try {
         const data = fs.readFileSync(imgPath).toString('base64');
-        blocks.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data } });
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType as ImageMediaType, data } });
       } catch (err) {
         log(`Failed to load image: ${imgPath}`);
       }
