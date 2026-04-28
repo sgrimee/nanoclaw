@@ -53,6 +53,7 @@ class Expense:
     payer: str
     category: str
     beneficiaries: List[str]
+    allocations: Dict[str, float]  # name -> actual amount owed per person
 
 
 class TricntError(Exception):
@@ -250,10 +251,13 @@ class TricntClient:
             payer_name = payer["alias"]["display_name"]
 
             beneficiaries = []
+            allocations = {}
             for alloc in expense_data.get("allocations", []):
                 if alloc.get("membership", {}).get("RegistryMembershipNonUser"):
                     member = alloc["membership"]["RegistryMembershipNonUser"]
-                    beneficiaries.append(member["alias"]["display_name"])
+                    name = member["alias"]["display_name"]
+                    beneficiaries.append(name)
+                    allocations[name] = abs(float(alloc.get("amount", {}).get("value", 0)))
 
             expenses.append(
                 Expense(
@@ -265,6 +269,7 @@ class TricntClient:
                     payer=payer_name,
                     category=expense_data.get("category", "UNCATEGORIZED"),
                     beneficiaries=beneficiaries,
+                    allocations=allocations,
                 )
             )
 
@@ -280,13 +285,17 @@ class TricntClient:
             if expense.payer in balances:
                 balances[expense.payer] += expense.amount
 
-            if expense.beneficiaries:
+            if expense.allocations:
+                for beneficiary, amount in expense.allocations.items():
+                    if beneficiary in balances:
+                        balances[beneficiary] -= amount
+            elif expense.beneficiaries:
                 per_person = expense.amount / len(expense.beneficiaries)
                 for beneficiary in expense.beneficiaries:
                     if beneficiary in balances:
                         balances[beneficiary] -= per_person
 
-        return balances
+        return {name: round(balance, 2) for name, balance in balances.items()}
 
     def close(self) -> None:
         if self._http_client:
