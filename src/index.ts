@@ -408,7 +408,7 @@ async function runAgent(
       const isStaleSession =
         sessionId &&
         output.error &&
-        /ENOENT.*\.jsonl|session.*not found|no conversation found/i.test(
+        /ENOENT.*\.jsonl|session.*not found|no conversation found|write EPIPE/i.test(
           output.error,
         );
 
